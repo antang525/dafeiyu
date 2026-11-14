@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>贪吃蛇</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f1e">
+<meta name="color-scheme" content="dark">
+<meta name="format-detection" content="telephone=no">
+<style>
+  /* ============ 主题变量 ============ */
+  :root {
+    --bg: #0a0f1e;
+    --bg-2: #0e1630;
+    --panel: rgba(17, 26, 50, 0.88);
+    --line: rgba(120, 170, 255, 0.14);
+    --text: #e8f0ff;
+    --text-dim: #8a9bc4;
+    --accent: #39e6a6;
+    --accent-2: #2bb3ff;
+    --food: #ff4d7d;
+    --warn: #ffc93c;
+    --radius: 16px;
+    --pad: 12px;
+
+    /* 舞台（棋盘 + HUD）尺寸：由脚本按视口计算后写入 */
+    --stage-w: 480px;
+    --stage-h: 480px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;               /* 移动端禁止页面滚动 */
+    overscroll-behavior: none;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+                 "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* 全面屏 iPhone 的 home indicator 安全区 */
+    padding:
+      env(safe-area-inset-top, 0)
+      env(safe-area-inset-right, 0)
+      env(safe-area-inset-bottom, 0)
+      env(safe-area-inset-left, 0);
+    touch-action: none;             /* 手势归游戏自己处理 */
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+
+  /* 背景光晕 */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(900px 600px at 12% -10%, rgba(43, 179, 255, 0.16), transparent 60%),
+      radial-gradient(700px 520px at 100% 108%, rgba(57, 230, 166, 0.10), transparent 60%),
+      linear-gradient(180deg, #0a0f1e 0%, #070b16 100%);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* ============ 布局骨架 ============ */
+  .app {
+    position: fixed;
+    inset: 0;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 10px)
+      calc(env(safe-area-inset-right, 0px) + 10px)
+      calc(env(safe-area-inset-bottom, 0px) + 10px)
+      calc(env(safe-area-inset-left, 0px) + 10px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;   /* 棋盘居中，控制区贴底 */
+    gap: 8px;
+  }
+
+  /* ============ 顶部 HUD ============ */
+  .hud {
+    flex: 0 0 auto;
+    width: var(--stage-w, 480px);
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chip {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(24, 36, 68, 0.9), rgba(14, 22, 44, 0.9));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .chip .label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .chip .value {
+    font-size: 17px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+  }
+  .chip.score .value { color: var(--accent); }
+  .chip.best  .value { color: var(--warn); }
+
+  .spacer { flex: 1 1 0; }
+
+  .btn {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(26, 40, 74, 0.95), rgba(14, 22, 44, 0.95));
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    height: 34px;
+    min-width: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+    flex: 0 0 auto;
+  }
+  .btn:active { transform: scale(0.94); }
+  .btn:hover { border-color: rgba(120, 170, 255, 0.32); }
+  .btn.icon { padding: 0; width: 34px; font-size: 15px; }
+  .btn svg { width: 15px; height: 15px; display: block; fill: currentColor; }
+
+  /* ============ 棋盘舞台 ============ */
+  .stage {
+    position: relative;
+    width: var(--stage-w);
+    height: var(--stage-h);
+    max-width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid rgba(120, 170, 255, 0.16);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      0 24px 60px -18px rgba(0, 0, 0, 0.9),
+      0 0 40px -16px rgba(43, 179, 255, 0.35);
+    background: #0b1224;
+    touch-action: none;
+    flex: 0 0 auto;
+  }
+
+  canvas#board {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  /* 危险状态：蛇头贴墙 / 贴自己时边框闪红 */
+  .stage.danger { animation: dangerPulse 0.55s ease-in-out infinite; }
+  @keyframes dangerPulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(0,0,0,.4), 0 0 22px -6px rgba(255, 77, 125, 0.35); }
+    50%      { box-shadow: 0 0 0 1px rgba(0,0,0,.4), 0 0 34px -4px rgba(255, 77, 125, 0.85); }
+  }
+
+  /* ============ 覆盖层（开始/暂停/结束） ============ */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px;
+    text-align: center;
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgba(30, 46, 88, 0.5), transparent 70%),
+      rgba(7, 11, 22, 0.72);
+    -webkit-backdrop-filter: blur(7px);
+    backdrop-filter: blur(7px);
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.98);
+    transition: opacity 0.18s ease, visibility 0.18s ease, transform 0.18s ease;
+    z-index: 5;
+  }
+  .overlay.show { opacity: 1; visibility: visible; transform: scale(1); }
+
+  .overlay h1 {
+    margin: 0;
+    font-size: clamp(22px, 7vw, 34px);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    line-height: 1.15;
+    background: linear-gradient(120deg, var(--accent) 0%, #7ee7ff 45%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 6px 18px rgba(43, 179, 255, 0.25));
+  }
+  .overlay .sub {
+    margin: 0;
+    font-size: clamp(11px, 3.2vw, 13px);
+    color: var(--text-dim);
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+  }
+  .overlay .big-score {
+    margin: 2px 0 0;
+    font-size: clamp(34px, 11vw, 52px);
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    text-shadow: 0 0 28px rgba(57, 230, 166, 0.35);
+  }
+  .overlay .stats {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 2px 0 0;
+  }
+  .overlay .stat {
+    border: 1px solid var(--line);
+    background: rgba(16, 25, 48, 0.8);
+    border-radius: 12px;
+    padding: 7px 14px;
+    min-width: 92px;
+  }
+  .overlay .stat .k { display: block; font-size: 10.5px; color: var(--text-dim); letter-spacing: 0.14em; font-weight: 600; }
+  .overlay .stat .v { display: block; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+  .btn-primary {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: 6px;
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 30px;
+    min-height: 46px;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: #04140d;
+    background: linear-gradient(180deg, #5cf5bb 0%, #22c88c 100%);
+    box-shadow: 0 10px 26px -8px rgba(57, 230, 166, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  .btn-primary:active { transform: scale(0.95); filter: brightness(0.92); }
+
+  .new-record {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #2a1400;
+    background: linear-gradient(180deg, #ffe07a, #ffb62e);
+    padding: 4px 12px;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px -6px rgba(255, 182, 46, 0.8);
+    animation: pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  }
+  @keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .pause-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(26, 40, 74, 0.9);
+    border: 1px solid var(--line);
+    margin-bottom: 2px;
+  }
+  .pause-icon span { display: block; width: 5px; height: 20px; background: var(--accent); border-radius: 2px; box-shadow: 9px 0 0 var(--accent); margin-left: -5px; }
+
+  /* ============ 控制区 ============ */
+  .controls {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 18px;
+    width: 100%;
+  }
+
+  /* 虚拟方向键：十字布局。左上角留空，让暂停键压在「上」键左上方，省一整行高度 */
+  .dpad {
+    --key: 56px;
+    --gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(3, var(--key));
+    grid-template-rows: repeat(2, var(--key));
+    grid-template-areas:
+      ". p ."
+      "l d r";
+    gap: var(--gap);
+    flex: 0 0 auto;
+  }
+  .dpad button {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 1px solid rgba(120, 170, 255, 0.2);
+    background: linear-gradient(180deg, rgba(30, 45, 82, 0.92), rgba(13, 21, 42, 0.92));
+    color: var(--text);
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+    touch-action: none;
+    transition: transform 0.06s ease, background 0.1s ease, border-color 0.1s ease;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .dpad button:active,
+  .dpad button.pressed {
+    transform: scale(0.93);
+    background: linear-gradient(180deg, rgba(57, 230, 166, 0.32), rgba(43, 179, 255, 0.22));
+    border-color: rgba(57, 230, 166, 0.55);
+  }
+  .dpad button svg { width: 22px; height: 22px; fill: currentColor; opacity: 0.9; }
+  .dpad button:disabled { opacity: 0.35; }
+  .dpad .up    { display: none; }                 /* 上 = 在画面上往上滑，见棋盘手势 */
+  .dpad .left  { grid-area: l; }
+  .dpad .down  { grid-area: d; }
+  .dpad .right { grid-area: r; }
+
+  /* 暂停/继续 圆按钮（占用左上空格） */
+  .dpad .center {
+    grid-area: p;
+    border-radius: 50%;
+    border-color: rgba(57, 230, 166, 0.35);
+    background: radial-gradient(circle at 50% 35%, rgba(57, 230, 166, 0.28), rgba(13, 21, 42, 0.95) 70%);
+    color: var(--accent);
+  }
+  .dpad .center svg { width: 20px; height: 20px; }
+  .dpad .center .ico-play { display: none; }
+  .dpad .center.is-paused .ico-play { display: block; }
+  .dpad .center.is-paused .ico-pause { display: none; }
+
+  /* 右侧主操作按钮组 */
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+  .actions .btn {
+    height: 40px;
+    min-width: 84px;
+    border-radius: 13px;
+    font-size: 14px;
+  }
+
+  /* 桌面/全键盘：隐藏虚拟按键省地方 */
+  /* 上键已并入「滑动」手势，棋盘与方向键之间留一点视觉间距，避免误触 */
+  .controls { margin-top: 6px; }
+  body:not(.touch) .controls { margin-bottom: 2px; }
+
+  /* 触屏 / 窄屏：放大虚拟键，压缩 HUD */
+  @media (pointer: coarse), (max-width: 560px) {
+    .hud { gap: 6px; }
+    .chip { padding: 6px 10px; }
+    .chip .value { font-size: 15px; }
+    .actions { display: none; }          /* 触屏上靠大号虚拟键 + 棋盘中心按钮即可 */
+    .controls { gap: 12px; }
+    .dpad { --key: 64px; --gap: 8px; }
+  }
+  @media (max-height: 640px) {
+    .dpad { --key: 54px; --gap: 6px; }
+    .chip .value { font-size: 14px; }
+    .chip { padding: 5px 10px; }
+    .btn { height: 30px; }
+    .app { gap: 6px; }
+  }
+
+  /* 极窄屏（竖屏小手机）：隐藏次要控件 */
+  @media (max-width: 360px) {
+    .sub-desk { display: none; }
+    .dpad { --key: 56px; }
+  }
+
+  .toast {
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    transform: translate(-50%, -6px);
+    background: rgba(12, 20, 40, 0.92);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 6;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* 用户开启「减少动态效果」时收敛动画 */
+  @media (prefers-reduced-motion: reduce) {
+    .stage.danger { animation: none; }
+    .new-record { animation: none; }
+    * { transition-duration: 0.01ms !important; }
+  }
+
+  /* 不支持 backdrop-filter 的老浏览器用更实的底 */
+  @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    .overlay { background: rgba(7, 11, 22, 0.94); }
+  }
+</style>
+</head>
+<body>
+
+<!-- data-state 便于样式/调试；aria 用于读屏 -->
+<div class="app" id="app" data-state="ready">
+
+  <!-- 顶部：分数 / 最高分 / 音效开关 -->
+  <header class="hud">
+    <div class="chip score"><span class="label">分数</span><span class="value" id="score">0</span></div>
+    <div class="chip best"><span class="label">最高</span><span class="value" id="best">0</span></div>
+    <div class="spacer"></div>
+    <button class="btn icon" id="btnSound" type="button" title="音效开关" aria-label="音效开关">
+      <svg id="icoSoundOn" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h3.2L12 5v14l-4.8-4H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1zm11.4-.9a1 1 0 0 1 1.4.1 6 6 0 0 1 0 7.6 1 1 0 1 1-1.5-1.3 4 4 0 0 0 0-5 1 1 0 0 1 .1-1.4zm2.6-2.6a1 1 0 0 1 1.4 0 10 10 0 0 1 0 14 1 1 0 0 1-1.4-1.4 8 8 0 0 0 0-11.2 1 1 0 0 1 0-1.4z"/></svg>
+      <svg id="icoSoundOff" viewBox="0 0 24 24" style="display:none" aria-hidden="true"><path d="M4 9h3.2L12 5v14l-4.8-4H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1zm12.3 1.3a1 1 0 0 1 1.4 0L19 11.6l1.3-1.3a1 1 0 1 1 1.4 1.4L20.4 13l1.3 1.3a1 1 0 0 1-1.4 1.4L19 14.4l-1.3 1.3a1 1 0 0 1-1.4-1.4l1.3-1.3-1.3-1.3a1 1 0 0 1 0-1.4z"/></svg>
+    </button>
+  </header>
+
+  <!-- 棋盘舞台 -->
+  <div class="stage" id="stage">
+    <canvas id="board" width="480" height="480" role="img" aria-label="贪吃蛇游戏区域"></canvas>
+
+    <!-- 开始画面 -->
+    <section class="overlay show" id="overlayStart" aria-label="开始画面">
+      <h1>贪 吃 蛇</h1>
+      <p class="sub">
+        <span class="sub-desk">方向键 / WASD 移动 · 空格 暂停 · </span>也可以直接在屏幕上滑动
+      </p>
+      <button class="btn-primary" id="btnStart" type="button">开始游戏</button>
+      <p class="sub" id="startHint">按任意方向键或点击开始</p>
+    </section>
+
+    <!-- 暂停遮罩 -->
+    <section class="overlay" id="overlayPause" aria-label="暂停">
+      <div class="pause-icon"><span></span></div>
+      <h1 style="font-size:clamp(20px,6vw,28px)">已 暂 停</h1>
+      <p class="sub">按空格或点击继续</p>
+      <button class="btn-primary" id="btnResume" type="button">继续游戏</button>
+    </section>
+
+    <!-- 游戏结束 -->
+    <section class="overlay" id="overlayOver" aria-label="游戏结束">
+      <h1 style="font-size:clamp(20px,6vw,30px)" id="overTitle">游 戏 结 束</h1>
+      <p class="big-score" id="finalScore">0</p>
+      <div id="recordBadge"><span class="new-record">新纪录！</span></div>
+      <div class="stats">
+        <div class="stat"><span class="k">最高分</span><span class="v" id="finalBest">0</span></div>
+        <div class="stat"><span class="k">长度</span><span class="v" id="finalLen">1</span></div>
+        <div class="stat"><span class="k">用时</span><span class="v" id="finalTime">0.0s</span></div>
+      </div>
+      <button class="btn-primary" id="btnRestart" type="button">再来一局</button>
+      <p class="sub" id="overHint">空格 / 回车 快速重开</p>
+    </section>
+
+    <!-- 轻提示 -->
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- 底部控制区 -->
+  <footer class="controls">
+    <div class="dpad" id="dpad" aria-label="方向控制">
+      <!-- 暂停/继续圆键占用左上空格 -->
+      <button class="center" id="btnPauseKey" type="button" data-act="pause" aria-label="暂停或继续">
+        <svg class="ico-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+        <svg class="ico-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>
+      </button>
+      <button class="left"  type="button" data-dir="left"  aria-label="左">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l8-7v4h6v6h-6v4z"/></svg>
+      </button>
+      <button class="down"  type="button" data-dir="down"  aria-label="下">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l-7-8h4V5h6v6h4z"/></svg>
+      </button>
+      <button class="right" type="button" data-dir="right" aria-label="右">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12l-8 7v-4H5V9h6V5z"/></svg>
+      </button>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="btnAction" type="button">开始</button>
+      <button class="btn" id="btnRestartSide" type="button">重开</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+ * 贪吃蛇 · 单文件版
+ * ---------------------------------------------------------------------
+ * 架构分层：
+ *   1. 常量/工具        —— 纯函数，方便逻辑测试
+ *   2. 存储 Storage      —— localStorage 封装（不可用时自动降级到内存）
+ *   3. 音效 Sfx          —— WebAudio 合成，无音频资源，首次手势时解锁
+ *   4. 游戏核心 Game     —— 纯逻辑：方向队列、推进、吃食物、碰撞、死亡
+ *   5. 渲染 Renderer     —— Canvas 2D 自适应绘制 + 插值动画
+ *   6. 输入 Input        —— 键盘 / 虚拟方向键 / 滑动手势，统一走 pushDir
+ *   7. 界面 UI           —— 覆盖层状态机、HUD、无障碍 & 调试钩子
+ * 循环：requestAnimationFrame 驱动，逻辑按固定 STEP_MS 推进（与帧率解耦）
+ * ===================================================================== */
+(function () {
+  'use strict';
+
+  /* ================================================================
+   * 1. 常量与工具
+   * ================================================================ */
+
+  var COLS = 20;            // 棋盘列数
+  var ROWS = 20;            // 棋盘行数
+  var STEP_MS = 130;        // 固定逻辑步长（毫秒）
+  // 方向队列容量：取 3 而不是 2。经典「快速拐弯」操作是 A(上) 之后立刻 B(左)，
+  // 若 A 在两次按键之间恰好生效，B 会被拒；留 3 个槽位才能保证「连按两个方向不丢」。
+  var MAX_QUEUE = 3;
+  var STORE_KEY = 'snake.best.v1';       // 最高分
+  var SOUND_KEY = 'snake.sound.v1';       // 音效偏好
+
+  // 方向向量表：NAME -> {x, y}
+  var DIRS = {
+    up:    { x: 0,  y: -1 },
+    down:  { x: 0,  y: 1  },
+    left:  { x: -1, y: 0  },
+    right: { x: 1,  y: 0  }
+  };
+  var OPPOSITE = { up: 'down', down: 'up', left: 'right', right: 'left' };
+
+  /** 把任意值夹到 [lo, hi] */
+  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+  /** 线性插值 */
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  /** 缓出曲线：先快后慢，用于蛇身插值更「跟手」 */
+  function easeOutQuad(t) { return 1 - (1 - t) * (1 - t); }
+  /** ttl 状态，时间感知（性能差时不会卡在中间） */
+  function nowMs() {
+    if (window.performance && typeof window.performance.now === 'function') return window.performance.now();
+    return Date.now();
+  }
+  /** 安全调用：单个回调出错不影响主循环 */
+  function safe(fn) { try { return fn(); } catch (e) { if (window.console) console.error(e); } }
+
+  /* ================================================================
+   * 2. 存储：localStorage 可能被隐私模式/沙箱禁用，降级到内存
+   * ================================================================ */
+  var Storage = (function () {
+    var memory = {};
+    var usable = false;
+    try {
+      var k = '__snake_probe__';
+      window.localStorage.setItem(k, '1');
+      window.localStorage.removeItem(k);
+      usable = true;
+    } catch (e) { usable = false; }
+
+    function get(key, fallback) {
+      try {
+        var raw = usable ? window.localStorage.getItem(key) : memory[key];
+        if (raw === null || raw === undefined) return fallback;
+        return raw;
+      } catch (e) { return fallback; }
+    }
+    function set(key, value) {
+      try {
+        if (usable) window.localStorage.setItem(key, String(value));
+        else memory[key] = String(value);
+      } catch (e) { memory[key] = String(value); }
+    }
+    return { get: get, set: set, usable: usable };
+  })();
+
+  /* ================================================================
+   * 3. 音效：全部用 WebAudio 实时合成（0 外部资源）
+   *    浏览器要求用户手势后才能开始播放，所以首次交互时 unlock()
+   * ================================================================ */
+  var Sfx = (function () {
+    var ctx = null;
+    var muted = Storage.get(SOUND_KEY, '0') === '1';   // 默认开启音效，"1" 表示静音
+
+    function ensureCtx() {
+      if (ctx) return ctx;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { ctx = new AC(); } catch (e) { ctx = null; }
+      return ctx;
+    }
+    function unlock() {
+      var c = ensureCtx();
+      if (c && c.state === 'suspended') { c.resume().catch(function () {}); }
+    }
+    /** 播放一个短音：freq 起止频率、dur 秒、type 波形、gain 音量 */
+    function tone(f0, f1, dur, type, gain) {
+      if (muted) return;
+      var c = ensureCtx();
+      if (!c || c.state !== 'running') return;
+      var t = c.currentTime;
+      var osc = c.createOscillator();
+      var g = c.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(f0, t);
+      if (f1 && f1 !== f0) osc.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain || 0.08, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(t); osc.stop(t + dur + 0.02);
+    }
+
+    return {
+      unlock: unlock,
+      eat: function () { tone(660, 1180, 0.1, 'triangle', 0.07); },
+      die: function () {
+        tone(320, 70, 0.42, 'sawtooth', 0.09);
+        setTimeout(function () { tone(180, 55, 0.35, 'triangle', 0.06); }, 70);
+      },
+      turn: function () {},
+      record: function () {
+        tone(660, 880, 0.1, 'sine', 0.06);
+        setTimeout(function () { tone(880, 1320, 0.14, 'sine', 0.06); }, 110);
+      },
+      click: function () { tone(520, 520, 0.04, 'square', 0.03); },
+      isMuted: function () { return muted; },
+      setMuted: function (m) {
+        muted = !!m;
+        Storage.set(SOUND_KEY, muted ? '1' : '0');
+      }
+    };
+  })();
+
+  /* ================================================================
+   * 4. 游戏核心：纯逻辑，不碰 DOM / Canvas
+   * ================================================================ */
+  function Game() {
+    this.reset();
+  }
+
+  /** 重置到初始状态：居中 3 节身体，头朝右 */
+  Game.prototype.reset = function () {
+    var cx = Math.floor(COLS / 2);
+    var cy = Math.floor(ROWS / 2);
+    // 数组顺序：head -> tail
+    this.snake = [
+      { x: cx,     y: cy },
+      { x: cx - 1, y: cy },
+      { x: cx - 2, y: cy }
+    ];
+    this.prevSnake = this.snake.map(function (p) { return { x: p.x, y: p.y }; });
+    this.dir = 'right';        // 当前生效方向
+    this.queue = [];           // 待生效方向（缓冲）
+    this.score = 0;
+    this.length = 3;
+    this.alive = true;
+    this.food = null;
+    this.eaten = 0;
+    // 视觉状态
+    this.eatFx = null;         // 吃到食物的爆点特效 {x, y, t0}
+    this.death = null;         // 死亡动画状态 {t0}
+    this.foodT0 = nowMs();     // 食物出现时间（呼吸动画相位）
+    this.spawnFood();
+  };
+
+  /** 在空格中随机生成食物（不会压到蛇身） */
+  Game.prototype.spawnFood = function () {
+    var taken = {};
+    for (var i = 0; i < this.snake.length; i++) {
+      taken[this.snake[i].x + ',' + this.snake[i].y] = true;
+    }
+    var free = [];
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if (!taken[x + ',' + y]) free.push({ x: x, y: y });
+      }
+    }
+    if (free.length === 0) { this.food = null; return false; }  // 满屏 = 胜利
+    this.food = free[Math.floor(Math.random() * free.length)];
+    this.foodT0 = nowMs();
+    return true;
+  };
+
+  /**
+   * 请求转向。规则：
+   *  - 不允许反向掉头（含队列里最后一步的方向，防止「右→上→左」这种钻空子自撞）
+   *  - 与队列末尾相同则忽略（去重）
+   *  - 队列最多 MAX_QUEUE 个，连按不丢
+   * 返回是否被接受
+   */
+  Game.prototype.pushDir = function (name) {
+    if (!DIRS[name]) return false;
+    var last = this.queue.length ? this.queue[this.queue.length - 1] : this.dir;
+    if (name === last) return false;                    // 同方向：忽略
+    if (name === OPPOSITE[last]) return false;          // 反向掉头：忽略
+    if (this.queue.length >= MAX_QUEUE) return false;   // 队列满
+    this.queue.push(name);
+    return true;
+  };
+
+  /**
+   * 推进一个逻辑步。返回事件对象用于音效/特效/UI：
+   *   { moved, ate, died, win, pos }
+   */
+  Game.prototype.step = function () {
+    var ev = { moved: false, ate: false, died: false, win: false };
+    if (!this.alive) return ev;
+
+    // 取出队列里的下一个方向
+    if (this.queue.length) this.dir = this.queue.shift();
+
+    var head = this.snake[0];
+    var d = DIRS[this.dir];
+    var nx = head.x + d.x;
+    var ny = head.y + d.y;
+
+    // 1) 撞墙
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) {
+      this.die('wall');
+      ev.died = true;
+      return ev;
+    }
+
+    var willEat = !!(this.food && nx === this.food.x && ny === this.food.y);
+
+    // 2) 撞自己（不含：本步会移走的尾巴 —— 除非这一口要吃到食物则不移动尾巴）
+    var limit = this.snake.length - (willEat ? 0 : 1);
+    for (var i = 0; i < limit; i++) {
+      if (this.snake[i].x === nx && this.snake[i].y === ny) {
+        this.die('self');
+        ev.died = true;
+        return ev;
+      }
+    }
+
+    // 记录上一步身体位置（渲染插值用）
+    this.prevSnake = this.snake.map(function (p) { return { x: p.x, y: p.y }; });
+
+    // 3) 移动：头插入，尾弹出（吃到食物时不弹）
+    this.snake.unshift({ x: nx, y: ny });
+    if (willEat) {
+      this.score += 10;
+      this.length = this.snake.length;
+      this.eaten++;
+      this.eatFx = { x: nx, y: ny, t0: nowMs() };
+      ev.ate = true;
+      var hasSpace = this.spawnFood();
+      if (!hasSpace) {
+        // 棋盘填满：判定通关
+        this.alive = true;
+        this.win = true;
+        ev.win = true;
+      }
+    } else {
+      this.snake.pop();
+    }
+    ev.moved = true;
+    ev.pos = { x: nx, y: ny };
+    return ev;
+  };
+
+  /** 死亡：打上标记，交给渲染层做动画 */
+  Game.prototype.die = function (reason) {
+    this.alive = false;
+    this.death = { t0: nowMs(), reason: reason || 'wall' };
+    // 死人不能动：清空队列
+    this.queue.length = 0;
+  };
+
+  /**
+   * 用给定方向模拟走一步，返回 {deadly, outOfBounds, willEat}。
+   * 只做判定不改状态，给输入层做「这一步走不通就别走」的容错。
+   */
+  Game.prototype.probeStep = function (dirName) {
+    var d = DIRS[dirName];
+    if (!d || !this.snake.length) return null;
+    var head = this.snake[0];
+    var nx = head.x + d.x, ny = head.y + d.y;
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) {
+      return { deadly: true, outOfBounds: true, willEat: false };
+    }
+    var willEat = !!(this.food && nx === this.food.x && ny === this.food.y);
+    var deadly = this.hitsSelf(nx, ny, willEat);
+    return { deadly: deadly, outOfBounds: false, willEat: willEat };
+  };
+
+  /** (x, y) 是否落在自己身上（排除本步会腾出来的尾巴） */
+  Game.prototype.hitsSelf = function (x, y, willEat) {
+    var limit = this.snake.length - (willEat ? 0 : 1);
+    for (var i = 0; i < limit; i++) {
+      if (this.snake[i].x === x && this.snake[i].y === y) return true;
+    }
+    return false;
+  };
+
+  /** 蛇头下一步是否会撞墙 / 撞身体 —— 用于「危险边框」提示 */
+  Game.prototype.isDanger = function () {
+    if (!this.alive) return false;
+    var head = this.snake[0];
+    var d = DIRS[this.dir];
+    var nx = head.x + d.x;
+    var ny = head.y + d.y;
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return true;
+    for (var i = 0; i < this.snake.length - 1; i++) {
+      if (this.snake[i].x === nx && this.snake[i].y === ny) return true;
+    }
+    return false;
+  };
+
+  /* ================================================================
+   * 5. 渲染：Canvas 2D，所有尺寸按 CSS 像素 * DPR 计算
+   * ================================================================ */
+  function Renderer(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.w = 0;           // CSS 像素宽
+    this.h = 0;           // CSS 像素高
+    this.dpr = 1;
+    this.cell = 10;       // 每格边长（CSS 像素）
+    // 蛇身用三段渐变色：头亮 -> 尾暗，deep 主题
+    this.headColor = [110, 255, 200];
+    this.bodyTop = [57, 230, 166];
+    this.bodyBottom = [26, 130, 210];
+    // 背景点阵缓存（避免每帧画 400 个点）
+    this._bgKey = '';
+  }
+
+  Renderer.prototype.resize = function () {
+    var rect = this.canvas.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    var w = Math.max(1, Math.round(rect.width));
+    var h = Math.max(1, Math.round(rect.height));
+    if (w === this.w && h === this.h && dpr === this.dpr) return;
+    this.w = w; this.h = h; this.dpr = dpr;
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+    // 用外接正方形保证格子是正圆角方格，多余空间居中（黑边）
+    this.cell = Math.min(w / COLS, h / ROWS);
+    // DPR 用变换而不是手动乘，绘制代码里全部用 CSS 像素
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this._bgKey = '';
+  };
+
+  /** 棋盘原点（居中偏移） */
+  Renderer.prototype.originX = function () { return (this.w - COLS * this.cell) / 2; };
+  Renderer.prototype.originY = function () { return (this.h - ROWS * this.cell) / 2; };
+
+  /** 圆角矩形路径（兼容不支持 ctx.roundRect 的旧浏览器） */
+  Renderer.prototype.roundRect = function (ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      return;
+    }
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  };
+
+  /** 背景：暗色底 + 棋盘格 + 轻微网格，缓存在离屏画布 */
+  Renderer.prototype.drawBackground = function () {
+    var ctx = this.ctx;
+    var ox = this.originX(), oy = this.originY();
+    var cell = this.cell;
+    var key = this.w + 'x' + this.h + '@' + cell.toFixed(2);
+    if (this._bgKey === key && this._bgCanvas) {
+      ctx.drawImage(this._bgCanvas, 0, 0, this.w, this.h);
+      return;
+    }
+    var off = document.createElement('canvas');
+    off.width = Math.max(1, Math.round(this.w * this.dpr));
+    off.height = Math.max(1, Math.round(this.h * this.dpr));
+    var g = off.getContext('2d');
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+    // 底色
+    g.fillStyle = '#0b1224';
+    g.fillRect(0, 0, this.w, this.h);
+    // 顶光
+    var grad = g.createLinearGradient(0, 0, 0, this.h);
+    grad.addColorStop(0, 'rgba(43,179,255,0.07)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, this.w, this.h);
+
+    // 棋盘格：奇偶格微差
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if ((x + y) % 2 === 0) {
+          g.fillStyle = 'rgba(255,255,255,0.022)';
+          g.fillRect(ox + x * cell, oy + y * cell, cell, cell);
+        }
+      }
+    }
+
+    // 内描边（棋盘边界）
+    g.strokeStyle = 'rgba(120,170,255,0.16)';
+    g.lineWidth = 1;
+    g.strokeRect(ox + 0.5, oy + 0.5, COLS * cell - 1, ROWS * cell - 1);
+
+    this._bgCanvas = off;
+    this._bgKey = key;
+    ctx.drawImage(off, 0, 0, this.w, this.h);
+  };
+
+  /**
+   * 主绘制入口
+   * @param {Game} game
+   * @param {number} alpha 当前 tick 的插值比例 0..1
+   * @param {number} t 当前时间（performance.now）
+   * @param {string} state 'ready' | 'playing' | 'paused' | 'over'
+   */
+  Renderer.prototype.draw = function (game, alpha, t, state) {
+    var ctx = this.ctx;
+    ctx.clearRect(0, 0, this.w, this.h);
+    this.drawBackground();
+
+    if (game.food) this.drawFood(game.food, t);
+    this.drawSnake(game, alpha, t);
+    if (game.eatFx) this.drawEatFx(game.eatFx, t);
+    if (game.death && state === 'over') this.drawDeathFx(game.death, t);
+
+    // 死亡时整体压暗一层（覆盖层之上还有 UI，这里只做画面氛围）
+    if (game.death && state === 'over') {
+      var el = clamp((t - game.death.t0) / 500, 0, 1);
+      if (el > 0) {
+        ctx.fillStyle = 'rgba(255,40,90,' + (0.16 * (1 - el) + 0.05) + ')';
+        ctx.fillRect(0, 0, this.w, this.h);
+      }
+    }
+  };
+
+  /** 食物：发光圆点 + 呼吸缩放 + 轨道小粒子 */
+  Renderer.prototype.drawFood = function (food, t) {
+    var ctx = this.ctx;
+    var cell = this.cell;
+    var cx = this.originX() + (food.x + 0.5) * cell;
+    var cy = this.originY() + (food.y + 0.5) * cell;
+    // 呼吸：周期 ~1.15s
+    var breath = 0.5 + 0.5 * Math.sin((t / 1150) * Math.PI * 2);
+    var r = cell * (0.30 + 0.055 * breath);
+
+    // 外光晕
+    var glow = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, cell * 1.5);
+    glow.addColorStop(0, 'rgba(255,77,125,' + (0.40 + 0.18 * breath) + ')');
+    glow.addColorStop(1, 'rgba(255,77,125,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cell * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 本体：径向渐变球
+    var g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.15, cx, cy, r);
+    g.addColorStop(0, '#ffd0dd');
+    g.addColorStop(0.35, '#ff6f96');
+    g.addColorStop(1, '#e01f55');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 高光点
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.32, cy - r * 0.36, r * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 小叶子 / 梗，一眼看出是"食物"
+    ctx.strokeStyle = 'rgba(57,230,166,0.95)';
+    ctx.lineWidth = Math.max(1.2, cell * 0.07);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx + r * 0.1, cy - r * 0.92);
+    ctx.quadraticCurveTo(cx + r * 0.38, cy - r * 1.5, cx + r * 1.05, cy - r * 1.35);
+    ctx.stroke();
+  };
+
+  /** 蛇：先画尾再画头，保证头部压在上面 */
+  Renderer.prototype.drawSnake = function (game, alpha, t) {
+    var ctx = this.ctx;
+    var snake = game.snake;
+    var prev = game.prevSnake;
+    var cell = this.cell;
+    var ox = this.originX(), oy = this.originY();
+    var n = snake.length;
+    // 死亡后不再插值，定格在最后位置
+    var a = game.alive ? easeOutQuad(clamp(alpha, 0, 1)) : 1;
+
+    // 构建每一节的插值中心（网格坐标 -> 画布像素）
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var cur = snake[i];
+      // prevSnake 可能比当前短（刚吃到食物），多出来的节直接用当前位置
+      var pv = prev[i] || prev[prev.length - 1] || cur;
+      var gx = lerp(pv.x, cur.x, a);
+      var gy = lerp(pv.y, cur.y, a);
+      // 穿墙？本游戏撞墙即死，不会出现跨屏插值
+      pts.push({
+        x: ox + (gx + 0.5) * cell,
+        y: oy + (gy + 0.5) * cell
+      });
+    }
+
+    // ---- 连接段：先画粗底座再画细的，让相邻格子无缝 ----
+    var pad = Math.max(1.2, cell * 0.07);
+    // 每节身体尺寸：尾巴更细
+    function segSize(idx) {
+      var prog = idx / Math.max(1, n - 1);           // 0 = 头，1 = 尾
+      return cell - pad * 2 - prog * cell * 0.16;
+    }
+    // 第 1..n-1 节（脖子开始）：从尾往头画，后画的压在先画的上面
+    for (var j = n - 1; j >= 1; j--) {
+      var c0 = pts[j];
+      var c1 = pts[j - 1];
+      var prog = j / Math.max(1, n - 1);
+      var col = this.lerpColor(this.bodyTop, this.bodyBottom, prog);
+      var size = segSize(j);
+      // 底座：把两节之间铺满，让蛇身连续不断
+      if (Math.abs(c0.x - c1.x) + Math.abs(c0.y - c1.y) > 0.5) {
+        ctx.fillStyle = this.rgba(col, 0.95);
+        this.roundRect(ctx,
+          Math.min(c0.x, c1.x) - size / 2,
+          Math.min(c0.y, c1.y) - size / 2,
+          Math.abs(c0.x - c1.x) + size,
+          Math.abs(c0.y - c1.y) + size,
+          size * 0.35);
+        ctx.fill();
+      }
+      // 本体圆角块
+      ctx.fillStyle = this.rgba(col, 1);
+      this.roundRect(ctx, c0.x - size / 2, c0.y - size / 2, size, size, size * 0.36);
+      ctx.fill();
+      // 高光（左上偏亮）
+      ctx.fillStyle = 'rgba(255,255,255,' + Math.max(0.04, 0.13 - prog * 0.08) + ')';
+      this.roundRect(ctx, c0.x - size / 2 + size * 0.16, c0.y - size / 2 + size * 0.14,
+        size * 0.62, size * 0.3, size * 0.15);
+      ctx.fill();
+    }
+
+    // ---- 蛇头（最后画，压在脖子上；眼睛再压在最上面） ----
+    if (n > 0) {
+      var head = pts[0];
+      var d = DIRS[game.dir] || DIRS.right;
+      // 脖子向前伸进头里的长度：决定眼睛能往头前方放多远还不被身体压住
+      var neckSize = n > 1 ? segSize(1) : 0;
+      var headHalf = (cell - pad * 1.4) / 2;
+      var neckReach = neckSize / 2 - headHalf;       // 脖子超出头中心的距离（负数=没超）
+      var hx = head.x, hy = head.y;
+
+      // 头的光晕
+      var hg = ctx.createRadialGradient(hx, hy, headHalf * 0.4, hx, hy, cell * 1.25);
+      hg.addColorStop(0, 'rgba(110,255,200,0.28)');
+      hg.addColorStop(1, 'rgba(110,255,200,0)');
+      ctx.fillStyle = hg;
+      ctx.beginPath(); ctx.arc(hx, hy, cell * 1.25, 0, Math.PI * 2); ctx.fill();
+
+      // 头本体（略大于身体，显得有「脑袋」感）
+      var hw = cell - pad * 1.5, hh = cell - pad * 1.5;
+      ctx.fillStyle = this.rgba(this.headColor, 1);
+      this.roundRect(ctx, hx - hw / 2, hy - hh / 2, hw, hh, hh * 0.4);
+      ctx.fill();
+      // 头部渐变叠加，更有体积感
+      var lg = ctx.createLinearGradient(hx - hw / 2, hy - hh / 2, hx + hw / 2, hy + hh / 2);
+      lg.addColorStop(0, 'rgba(255,255,255,0.28)');
+      lg.addColorStop(1, 'rgba(0,80,90,0.18)');
+      ctx.fillStyle = lg;
+      this.roundRect(ctx, hx - hw / 2, hy - hh / 2, hw, hh, hh * 0.4);
+      ctx.fill();
+
+      // 眼睛：垂直于前进方向左右各一只，并往前进方向前移。
+      // 偏移量必须明显大于脖子露进头里的深度（neckReach），否则会被身体挡住的一半。
+      var eyeSide = { x: -d.y, y: d.x };                       // 侧向单位向量
+      var eyeFwd = (0.2 * cell) + Math.max(0, neckReach);      // 往前的偏移（相对头中心）
+      var eyeSep = 0.185 * cell;                               // 左右间距
+      var eyeR = Math.max(1.4, cell * 0.12);
+      var pupilR = Math.max(0.8, cell * 0.064);
+      var ex, ey, k;
+      for (k = -1; k <= 1; k += 2) {
+        ex = hx + d.x * eyeFwd + eyeSide.x * eyeSep * k;
+        ey = hy + d.y * eyeFwd + eyeSide.y * eyeSep * k;
+        // 眼白
+        ctx.fillStyle = '#f4fdff';
+        ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2); ctx.fill();
+        // 瞳孔（朝前进方向偏移）
+        ctx.fillStyle = game.alive ? '#0a1a2a' : '#5a1020';
+        ctx.beginPath();
+        ctx.arc(ex + d.x * eyeR * 0.38, ey + d.y * eyeR * 0.38, pupilR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 活着的蛇头加一点随呼吸的描边光
+      if (game.alive) {
+        var pulse = 0.5 + 0.5 * Math.sin(t / 420);
+        ctx.strokeStyle = 'rgba(140,255,220,' + (0.18 + 0.16 * pulse) + ')';
+        ctx.lineWidth = Math.max(1, cell * 0.045);
+        this.roundRect(ctx, hx - hw / 2, hy - hh / 2, hw, hh, hh * 0.4);
+        ctx.stroke();
+      }
+    }
+  };
+
+  /** 吃到食物：扩散圆环 + 小碎屑 */
+  Renderer.prototype.drawEatFx = function (fx, t) {
+    var ctx = this.ctx;
+    // 注意：即便是过去时间的特效（频繁吃食物叠加时）也要能画，不能直接吞掉
+    var el = clamp((t - fx.t0) / 380, 0, 1);
+    if (el > 0 && el >= 1) return;
+    var cell = this.cell;
+    var cx = this.originX() + (fx.x + 0.5) * cell;
+    var cy = this.originY() + (fx.y + 0.5) * cell;
+    var r = cell * (0.3 + 0.75 * easeOutQuad(el));
+    ctx.strokeStyle = 'rgba(255,140,175,' + (0.75 * (1 - el)) + ')';
+    ctx.lineWidth = Math.max(1, cell * 0.12 * (1 - el));
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+
+    // 6 个小碎屑
+    for (var i = 0; i < 6; i++) {
+      var ang = (i / 6) * Math.PI * 2 + 0.5;
+      var dist = cell * (0.2 + 1.0 * easeOutQuad(el));
+      var px = cx + Math.cos(ang) * dist;
+      var py = cy + Math.sin(ang) * dist;
+      ctx.fillStyle = 'rgba(255,' + (90 + i * 12) + ',150,' + (0.85 * (1 - el)) + ')';
+      ctx.beginPath();
+      ctx.arc(px, py, Math.max(0.6, cell * 0.075 * (1 - el)), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+
+  /** 死亡：红闪 + 从头部向外扩散的冲击波 */
+  Renderer.prototype.drawDeathFx = function (death, t) {
+    var ctx = this.ctx;
+    var el = clamp((t - death.t0) / 650, 0, 1);
+    if (el >= 1) return;
+    // 全屏红闪（快速衰减）
+    var flash = Math.max(0, 1 - el * 3.2);
+    if (flash > 0) {
+      ctx.fillStyle = 'rgba(255,60,100,' + (0.35 * flash) + ')';
+      ctx.fillRect(0, 0, this.w, this.h);
+    }
+    // 冲击波（以死亡时蛇头为中心）
+    var head = this.snake[0];
+    var cell = this.cell;
+    var cx = this.originX() + (head.x + 0.5) * cell;
+    var cy = this.originY() + (head.y + 0.5) * cell;
+    var r = cell * (1 + 9 * easeOutQuad(el));
+    ctx.strokeStyle = 'rgba(255,90,130,' + (0.6 * (1 - el)) + ')';
+    ctx.lineWidth = Math.max(1, cell * 0.5 * (1 - el));
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  };
+
+  /** 颜色工具：rgb 数组 + alpha -> css 字符串 */
+  Renderer.prototype.rgba = function (c, a) {
+    return 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + a + ')';
+  };
+  /**
+   * 颜色插值。形参避开 t：曾经写成 (a, b, t) + clamp(t) 误用，
+   * 导致蛇身颜色变 NaN、整条蛇画不出来。
+   */
+  Renderer.prototype.lerpColor = function (c1, c2, amount) {
+    amount = clamp(amount, 0, 1);
+    return [
+      lerp(c1[0], c2[0], amount),
+      lerp(c1[1], c2[1], amount),
+      lerp(c1[2], c2[2], amount)
+    ];
+  };
+
+  /* ================================================================
+   * 6. 状态机 + UI 绑定
+   * ================================================================ */
+  var STATE = { READY: 'ready', PLAYING: 'playing', PAUSED: 'paused', OVER: 'over' };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  var dom = {
+    app: $('app'),
+    stage: $('stage'),
+    canvas: $('board'),
+    score: $('score'),
+    best: $('best'),
+    overlayStart: $('overlayStart'),
+    overlayPause: $('overlayPause'),
+    overlayOver: $('overlayOver'),
+    finalScore: $('finalScore'),
+    finalBest: $('finalBest'),
+    finalLen: $('finalLen'),
+    finalTime: $('finalTime'),
+    recordBadge: $('recordBadge'),
+    overTitle: $('overTitle'),
+    overHint: $('overHint'),
+    btnStart: $('btnStart'),
+    btnResume: $('btnResume'),
+    btnRestart: $('btnRestart'),
+    btnRestartSide: $('btnRestartSide'),
+    btnAction: $('btnAction'),
+    btnPauseKey: $('btnPauseKey'),
+    btnSound: $('btnSound'),
+    icoSoundOn: $('icoSoundOn'),
+    icoSoundOff: $('icoSoundOff'),
+    dpad: $('dpad'),
+    toast: $('toast'),
+    startHint: $('startHint')
+  };
+
+  var game = new Game();
+  var renderer = new Renderer(dom.canvas);
+
+  var app = {
+    state: STATE.READY,
+    best: parseInt(Storage.get(STORE_KEY, '0'), 10) || 0,
+    stepAcc: 0,          // 逻辑步进累加器
+    lastTs: 0,
+    runStartTs: 0,       // 本局开始时间
+    elapsed: 0,          // 本局累计游戏时长（暂停不计）
+    overShownAt: 0,      // 结束画面出现时间（防误触秒重开）
+    edgeAssist: true,    // 贴边时「迟到的转向」容错（见 gameTick）
+    tocks: 0             // 已推进的逻辑步数
+  };
+
+  /* ---------- UI 小工具 ---------- */
+
+  // 注意：函数名不能叫 toast —— 会遮蔽同名的 dom.toast 引用（原版写错过一次）
+  var toastTimer = 0;
+  function showToast(msg, ms) {
+    dom.toast.textContent = msg;
+    dom.toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { dom.toast.classList.remove('show'); }, ms || 1400);
+  }
+
+  function syncHud() {
+    dom.score.textContent = String(game.score);
+    dom.best.textContent = String(app.best);
+  }
+
+  function syncSoundIcon() {
+    var m = Sfx.isMuted();
+    dom.icoSoundOn.style.display = m ? 'none' : 'block';
+    dom.icoSoundOff.style.display = m ? 'block' : 'none';
+    dom.btnSound.setAttribute('aria-pressed', m ? 'true' : 'false');
+    dom.btnSound.title = m ? '音效：关' : '音效：开';
+  }
+
+  function syncPauseIcon() {
+    var isPaused = app.state === STATE.PAUSED;
+    dom.btnPauseKey.classList.toggle('is-paused', isPaused);
+    dom.btnPauseKey.setAttribute('aria-label', isPaused ? '继续' : '暂停');
+    if (app.state === STATE.PLAYING) dom.btnAction.textContent = '暂停';
+    else if (app.state === STATE.PAUSED) dom.btnAction.textContent = '继续';
+    else dom.btnAction.textContent = '开始';
+  }
+
+  function showOverlay(el) {
+    [dom.overlayStart, dom.overlayPause, dom.overlayOver].forEach(function (o) {
+      o.classList.toggle('show', o === el);
+    });
+  }
+
+  function setState(s) {
+    app.state = s;
+    dom.app.setAttribute('data-state', s);
+    syncPauseIcon();
+    if (s === STATE.PLAYING) showOverlay(null);
+    else if (s === STATE.PAUSED) showOverlay(dom.overlayPause);
+    else if (s === STATE.READY) showOverlay(dom.overlayStart);
+    else if (s === STATE.OVER) showOverlay(dom.overlayOver);
+  }
+
+  /* ---------- 游戏流转 ---------- */
+
+  function newGame() {
+    game.reset();
+    app.stepAcc = 0;
+    app.elapsed = 0;
+    app.runStartTs = nowMs();
+    app.tocks = 0;
+    dom.stage.classList.remove('danger');
+    syncHud();
+    setState(STATE.READY);
+  }
+
+  function startGame() {
+    if (app.state === STATE.PLAYING) return;
+    if (app.state === STATE.OVER || app.state === STATE.READY) {
+      game.reset();
+      app.stepAcc = 0;
+      app.elapsed = 0;
+      app.runStartTs = nowMs();
+      app.tocks = 0;
+      syncHud();
+    }
+    app.lastTs = nowMs();
+    setState(STATE.PLAYING);
+    Sfx.unlock();
+  }
+
+  function pauseGame() {
+    if (app.state !== STATE.PLAYING) return;
+    setState(STATE.PAUSED);
+  }
+
+  function resumeGame() {
+    if (app.state !== STATE.PAUSED) return;
+    app.lastTs = nowMs();
+    setState(STATE.PLAYING);
+  }
+
+  /** 空格 / 中央键：开始<->暂停<->继续 一键切换 */
+  function togglePause() {
+    if (app.state === STATE.PLAYING) { pauseGame(); Sfx.click(); }
+    else if (app.state === STATE.PAUSED) { resumeGame(); Sfx.click(); }
+    else if (app.state === STATE.READY) { startGame(); Sfx.click(); }
+    else if (app.state === STATE.OVER) {
+      // 结束画面按暂停键不重开，避免误触；交给「再来一局」
+      Sfx.click();
+    }
+  }
+
+  function endGame(win) {
+    var isRecord = false;
+    // 同步一帧，保证结束画面能看到蛇最后位置
+    if (game.score > app.best) {
+      app.best = game.score;
+      Storage.set(STORE_KEY, app.best);
+      isRecord = true;
+    }
+    syncHud();
+
+    dom.finalScore.textContent = String(game.score);
+    dom.finalBest.textContent = String(app.best);
+    dom.finalLen.textContent = String(game.snake.length);
+    dom.finalTime.textContent = (app.elapsed / 1000).toFixed(1) + 's';
+    dom.recordBadge.style.display = (isRecord && game.score > 0) ? '' : 'none';
+    dom.overTitle.textContent = win ? '通 关 啦' : '游 戏 结 束';
+    dom.overHint.textContent = win ? '你填满了整个棋盘' : '空格 / 回车 快速重开';
+    app.overShownAt = nowMs();
+    setState(STATE.OVER);
+    if (win) Sfx.record(); else Sfx.die();
+  }
+
+  function restart() {
+    newGame();
+    startGame();
+    Sfx.click();
+  }
+
+  /* ---------- 方向输入统一入口 ---------- */
+  /**
+   * 所有输入（键盘/虚拟键/滑动）都走这里：
+   *  - READY 状态下按方向键 = 直接开局并把该方向作为初始方向
+   *  - PLAYING 状态下进方向队列（缓冲 + 禁反向）
+   *  - PAUSED 时忽略（防暂停中改方向）
+   */
+  function inputDir(name) {
+    if (!DIRS[name]) return false;
+    Sfx.unlock();
+    if (app.state === STATE.READY) {
+      // 初始朝右，如果按左直接忽略不了开局，所以先把头指向可接受，再开局
+      game.reset();
+      app.stepAcc = 0; app.elapsed = 0; app.runStartTs = nowMs();
+      syncHud();
+      setState(STATE.PLAYING);
+      app.lastTs = nowMs();
+      // 右是初始方向，直接接受；左是反向，忽略方向但依旧开局
+      game.pushDir(name);
+      return true;
+    }
+    if (app.state === STATE.PAUSED) return false;
+    if (app.state === STATE.OVER) {
+      // 结束画面按方向键：先重开，再用于转向（手感更顺）
+      if (nowMs() - app.overShownAt < 260) return false;   // 防误触秒重开
+      restart();
+      game.pushDir(name);
+      return true;
+    }
+    if (app.state !== STATE.PLAYING) return false;
+    return game.pushDir(name);
+  }
+
+  /* ================================================================
+   * 主循环：requestAnimationFrame + 固定步长累加器
+   * ================================================================ */
+
+  /**
+   * 把一个逻辑步 + 后续 UI 副作用统一处理掉
+   * @param {boolean} [edgeAssist] 是否启用贴边容错
+   */
+  /** 玩家队列里的某个方向相对当前朝向是否合法（不能是同向或掉头） */
+  function dirAllowed(name) {
+    return !!DIRS[name] && name !== game.dir && name !== OPPOSITE[game.dir];
+  }
+
+  function advance(edgeAssist) {
+    var ev;
+
+    // —— 处理「必须先转向才能活」的两类队列输入 ——
+    // 两类修正只在「按原计划必死(killNext)」且「改方向就能活」时生效，
+    // 因此普通对局中的判定完全不变，不会变成无敌挂。
+    if (game.queue.length && game.alive) {
+      var head = game.snake[0];
+      var cur = DIRS[game.dir];
+      var nx = head.x + cur.x, ny = head.y + cur.y;
+      var killNext = nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS ||
+                     game.hitsSelf(nx, ny, !!(game.food && nx === game.food.x && ny === game.food.y));
+
+      // A) 贴边容错：玩家在「即将撞墙的那一步」之前按下了转向，但输入比 tick 晚了一点点。
+      //    （必须已经走过至少一步，避免刚重置时误判）
+      if (edgeAssist && killNext && app.tocks > 0 && game.queue.length === 1) {
+        var only = game.queue[0];
+        if (dirAllowed(only)) {
+          var d2 = DIRS[only];
+          var tx = head.x + d2.x, ty = head.y + d2.y;
+          if (tx >= 0 && ty >= 0 && tx < COLS && ty < ROWS && !game.hitsSelf(tx, ty)) {
+            game.dir = game.queue.pop();     // 提前一步转向
+          }
+        }
+      }
+
+      // B) 双向队列输入：队列里有两个方向时，按顺序走第一步就会死，
+      //    这一步死了第二步必然被丢弃 —— 直接让第二个方向先走。
+      //    典型场景：掉帧/暂停恢复后快速输入了两次转向。
+      if (game.queue.length >= 2 && killNext) {
+        var alt = game.queue[1];
+        if (dirAllowed(alt)) {
+          game.queue[0] = alt;
+          game.queue.length = 1;
+        }
+      }
+    }
+
+    // 正戏：推进一个逻辑步（死亡判定在 step 内部完成）
+    ev = game.step();
+    app.tocks++;
+    if (ev.died) { endGame(false); return ev; }
+    if (ev.ate) Sfx.eat();
+    if (ev.win) { endGame(true); return ev; }
+    if (ev.moved) syncHud();
+    // 危险提示：蛇头下一步会死时边框闪红
+    dom.stage.classList.toggle('danger', game.isDanger());
+    return ev;
+  }
+
+  function gameTick() { advance(app.edgeAssist); }
+
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    safe(function () {
+      var now = (typeof ts === 'number' && isFinite(ts)) ? ts : nowMs();
+      var last = app.lastTs || now;
+      var dt = now - last;
+      app.lastTs = now;
+      // 切后台/掉帧回来时限制单帧最大推进，避免一次卡顿连走好几步
+      if (dt > 250) dt = 250;
+      if (dt < 0) dt = 0;
+
+      // data-paused：只给自动化测试用，临时冻结「自动推进」（手动 step 仍然可用）
+      var autoHeld = dom.app.getAttribute('data-paused') === '1';
+
+      if (app.state === STATE.PLAYING && !autoHeld) {
+        app.elapsed += dt;
+        app.stepAcc += dt;
+        var guard = 0;
+        while (app.stepAcc >= STEP_MS && guard < 4 && app.state === STATE.PLAYING) {
+          app.stepAcc -= STEP_MS;
+          guard += 1;
+          gameTick();
+        }
+        if (app.state !== STATE.PLAYING) app.stepAcc = 0;
+        // 清理特效计时
+        if (game.eatFx && now - game.eatFx.t0 > 600) game.eatFx = null;
+      }
+
+      // alpha: 本 tick 内的插值进度（暂停/结束时定格在 1）
+      var alpha = app.state === STATE.PLAYING ? clamp(app.stepAcc / STEP_MS, 0, 1) : 1;
+      renderer.draw(game, alpha, now, app.state);
+    });
+  }
+
+  /* ================================================================
+   * 7. 输入：键盘
+   * ================================================================ */
+  var KEYMAP = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right',
+    w: 'up', s: 'down', a: 'left', d: 'right',
+    W: 'up', S: 'down', A: 'left', D: 'right'
+  };
+
+  function onKeyDown(e) {
+    // 输入法组合中忽略
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.repeat) return;              // 系统自动重复不作为输入
+    var code = e.code;
+    var key = e.key;
+
+    // 方向：key 或 code 任一命中即可（兼容不同键盘布局）
+    var dir = KEYMAP[key] || KEYMAP[code] ||
+      (key && key.toLowerCase ? KEYMAP[key.toLowerCase()] : null);
+    if (!dir && key === 'Up') dir = 'up';
+    if (!dir && key === 'Down') dir = 'down';
+    if (!dir && key === 'Left') dir = 'left';
+    if (!dir && key === 'Right') dir = 'right';
+
+    if (dir) {
+      e.preventDefault();
+      inputDir(dir);
+      return;
+    }
+
+    // 空格 / 回车 / P
+    if (code === 'Space' || key === ' ' || key === 'Spacebar' || code === 'Enter' || key === 'Enter' || key === 'p' || key === 'P') {
+      e.preventDefault();
+      if (e.repeat) return;
+      if (app.state === STATE.OVER) {
+        if (nowMs() - app.overShownAt > 300) restart();
+        return;
+      }
+      if (app.state === STATE.READY) { startGame(); Sfx.click(); return; }
+      togglePause();
+      return;
+    }
+
+    // M：静音切换；R：重开
+    if (key === 'm' || key === 'M') { toggleSound(); return; }
+    if (key === 'r' || key === 'R') {
+      if (app.state === STATE.PLAYING || app.state === STATE.PAUSED || app.state === STATE.OVER) { restart(); }
+      return;
+    }
+    if (key === 'Escape') { pauseGame(); return; }
+  }
+
+  function toggleSound() {
+    Sfx.setMuted(!Sfx.isMuted());
+    syncSoundIcon();
+    if (!Sfx.isMuted()) { Sfx.unlock(); Sfx.click(); }
+    showToast(Sfx.isMuted() ? '音效已关闭' : '音效已开启', 900);
+  }
+
+  /* ================================================================
+   * 8. 输入：虚拟方向键（pointer 事件，带按下态视觉反馈）
+   * ================================================================ */
+  function bindDpad() {
+    var buttons = dom.dpad.querySelectorAll('button[data-dir]');
+    Array.prototype.forEach.call(buttons, function (btn) {
+      var dir = btn.getAttribute('data-dir');
+      var press = function (e) {
+        e.preventDefault();
+        btn.classList.add('pressed');
+        inputDir(dir);
+      };
+      var release = function (e) {
+        if (e) e.preventDefault();
+        btn.classList.remove('pressed');
+      };
+      if (window.PointerEvent) {
+        btn.addEventListener('pointerdown', function (e) {
+          // 指针捕获，手指滑出按钮也能收到 up
+          try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+          press(e);
+        });
+        btn.addEventListener('pointerup', release);
+        btn.addEventListener('pointercancel', release);
+        btn.addEventListener('pointerleave', release);
+      } else {
+        btn.addEventListener('touchstart', press, { passive: false });
+        btn.addEventListener('touchend', release);
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+      }
+      // 防止长按弹出菜单
+      btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    });
+  }
+
+  /* ================================================================
+   * 9. 输入：滑动 / 轻点手势（整个棋盘区域）
+   * ================================================================ */
+  function bindGestures() {
+    var el = dom.stage;
+    var active = {};            // pointerId -> {x, y, t, fired}
+    var SWIPE_MIN = 24;         // 判定为滑动的最小位移（CSS 像素）
+    var TAP_MAX = 30;           // 判定为轻点的最大位移
+    var TAP_MS = 320;           // 判定为轻点的时间上限
+    var LOCK_RATIO = 1.15;      // 主轴/副轴比例，决定锁定方向
+
+    function onDown(e) {
+      if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+      Sfx.unlock();
+      active[e.pointerId] = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: nowMs(), fired: false };
+      // 触屏在棋盘上按下就给方向（轻点=暂停切换），所以这里不 preventDefault 后置
+      if (e.pointerType === 'touch') e.preventDefault();
+    }
+
+    function onMove(e) {
+      var p = active[e.pointerId];
+      if (!p || p.fired) return;
+      if (e.pointerType === 'touch') e.preventDefault();   // 阻止页面滚动/回弹
+      var dx = e.clientX - p.sx;
+      var dy = e.clientY - p.sy;
+      if (Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
+      // 锁方向
+      var dir;
+      if (Math.abs(dx) > Math.abs(dy) * LOCK_RATIO) dir = dx > 0 ? 'right' : 'left';
+      else if (Math.abs(dy) > Math.abs(dx) * LOCK_RATIO) dir = dy > 0 ? 'down' : 'up';
+      else dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      inputDir(dir);
+      p.fired = true;
+      // 一次滑动结束后，重置基准点，允许「画圈」连续转向
+      p.sx = e.clientX; p.sy = e.clientY;
+      // 稍后允许同一手势再次转向
+      setTimeout(function () { if (active[e.pointerId] === p) p.fired = false; }, 60);
+    }
+
+    function onUp(e) {
+      var p = active[e.pointerId];
+      if (!p) return;
+      delete active[e.pointerId];
+      var moved = Math.abs(e.clientX - p.sx) + Math.abs(e.clientY - p.sy);
+      var dur = nowMs() - p.t;
+      var isTap = !p.fired && moved < TAP_MAX && dur < TAP_MS;
+      if (!isTap) return;
+      // 轻点棋盘：开始 / 暂停 / 继续（结束画面交给按钮，避免误触）
+      if (app.state === STATE.READY) { startGame(); Sfx.click(); }
+      else if (app.state === STATE.PLAYING) { pauseGame(); Sfx.click(); }
+      else if (app.state === STATE.PAUSED) { resumeGame(); Sfx.click(); }
+    }
+
+    function onCancel(e) { delete active[e.pointerId]; }
+
+    if (window.PointerEvent) {
+      el.addEventListener('pointerdown', onDown);
+      el.addEventListener('pointermove', onMove, { passive: false });
+      el.addEventListener('pointerup', onUp);
+      el.addEventListener('pointercancel', onCancel);
+      el.addEventListener('pointerleave', onCancel);
+    } else {
+      // 老式 touch 事件回退
+      el.addEventListener('touchstart', function (e) {
+        var t = e.changedTouches[0];
+        onDown({ pointerId: t.identifier, pointerType: 'touch', clientX: t.clientX, clientY: t.clientY, preventDefault: function () { e.preventDefault(); } });
+      }, { passive: false });
+      el.addEventListener('touchmove', function (e) {
+        var t = e.changedTouches[0];
+        onMove({ pointerId: t.identifier, pointerType: 'touch', clientX: t.clientX, clientY: t.clientY, preventDefault: function () { e.preventDefault(); } });
+      }, { passive: false });
+      el.addEventListener('touchend', function (e) {
+        var t = e.changedTouches[0];
+        onUp({ pointerId: t.identifier, clientX: t.clientX, clientY: t.clientY });
+      });
+      el.addEventListener('touchcancel', function (e) {
+        var t = e.changedTouches[0];
+        onCancel({ pointerId: t.identifier });
+      });
+    }
+
+    // 兜底：阻止双指缩放、双击缩放
+    el.addEventListener('dblclick', function (e) { e.preventDefault(); });
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+  }
+
+  /* ================================================================
+   * 10. 自适应布局：让棋盘总是「最大的可用正方形」
+   * ================================================================ */
+  /** 当前是不是「触屏 / 窄屏」布局（与 CSS 媒体查询保持一致） */
+  function isTouchUI() {
+    return !!(window.matchMedia && window.matchMedia('(pointer: coarse), (max-width: 560px)').matches);
+  }
+
+  function layout() {
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var appEl = dom.app;
+
+    // 用实际渲染尺寸算，避免安全区 padding 误差
+    var cs = window.getComputedStyle(appEl);
+    var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    var innerW = Math.max(160, vw - padX);
+    var innerH = Math.max(160, vh - padY);
+
+    // 量一下 HUD 和控制区占的高度。注意：控制区高度会随 dpad 的 --key 变化，
+    // 所以必须在「当前这一轮」先用 margin 把 dpad 尺寸定下来再量，不能跨轮用旧值。
+    var hud = appEl.querySelector('.hud');
+    var controls = appEl.querySelector('.controls');
+    var gaps = 2 * 8;
+
+    // 清掉上一轮可能写进去的降级值：先让 dpad 回落到 CSS 里的标准尺寸
+    dom.dpad.style.removeProperty('--key');
+    dom.dpad.style.margin = '0';
+    var hudH = hud ? hud.offsetHeight : 40;
+    var ctrlH = controls ? controls.offsetHeight : 0;
+
+    var availH = innerH - hudH - ctrlH - gaps;
+    var size = Math.floor(Math.min(innerW, Math.max(180, availH), 720));
+
+    // 超矮屏（横屏手机 / 小窗口）兜底：棋盘至少占视口 62% 高，
+    // 不够就从虚拟方向键身上省，最后再允许轻微上压；保证棋盘永远不被切掉底部。
+    // 触屏布局下控制区一定要留够，桌面布局下允许棋盘吃掉大部分高度
+    var minSize = Math.floor(Math.min(innerW, innerH * (isTouchUI() ? 0.62 : 0.5)));
+    if (size < minSize) {
+      size = minSize;
+      var spare = innerH - hudH - gaps - size - ctrlH;   // 负值表示还超了多少
+      var key = Math.floor(((ctrlH + spare) - 8) / 2);   // dpad 2 行 + 中间 gap
+      if (key > 0 && key < 64) {
+        dom.dpad.style.setProperty('--key', key + 'px');
+        ctrlH = controls.offsetHeight;
+      }
+      var over = hudH + gaps + size + ctrlH - innerH;
+      if (over > 0) {
+        // 再不够就让控制区向上压进间距里（不超过间距本身）
+        dom.dpad.style.margin = '-' + Math.min(over, 16) + 'px 0 0';
+        ctrlH = controls.offsetHeight;
+      }
+      // 最后一档：还有溢出就从棋盘里扣（防止任何情况下被裁切）
+      var over2 = hudH + gaps + size + ctrlH - innerH;
+      if (over2 > 0) size = Math.max(160, size - over2);
+    }
+
+    // 写 CSS 变量。棋盘边长 = size；HUD 同宽
+    document.documentElement.style.setProperty('--stage-w', size + 'px');
+    document.documentElement.style.setProperty('--stage-h', size + 'px');
+
+    // 强制同步布局后重新渲染（下一帧自动带 resize）
+    requestAnimationFrame(function () {
+      renderer.resize();
+    });
+  }
+
+  /* ================================================================
+   * 11. 事件绑定与启动
+   * ================================================================ */
+
+  function bindUI() {
+    dom.btnStart.addEventListener('click', function (e) { e.preventDefault(); startGame(); Sfx.click(); });
+    dom.btnResume.addEventListener('click', function (e) { e.preventDefault(); resumeGame(); Sfx.click(); });
+    var doRestart = function (e) { e.preventDefault(); restart(); };
+    dom.btnRestart.addEventListener('click', doRestart);
+    dom.btnRestartSide.addEventListener('click', function (e) { e.preventDefault(); restart(); });
+    dom.btnPauseKey.addEventListener('click', function (e) { e.preventDefault(); togglePause(); });
+    dom.btnSound.addEventListener('click', function (e) { e.preventDefault(); toggleSound(); });
+    dom.btnAction.addEventListener('click', function (e) {
+      e.preventDefault();
+      Sfx.unlock();
+      if (app.state === STATE.PLAYING) pauseGame();
+      else if (app.state === STATE.PAUSED) resumeGame();
+      else if (app.state === STATE.OVER) restart();
+      else startGame();
+      Sfx.click();
+    });
+
+    // 按钮上的 pointerdown 也解锁音频（iOS Safari 需要手势内同步创建）
+    [dom.btnStart, dom.btnResume, dom.btnRestart, dom.btnPauseKey, dom.btnAction].forEach(function (b) {
+      b.addEventListener('pointerdown', function () { Sfx.unlock(); });
+    });
+
+    // 只在 window 上注册一次：keydown 会从 window 冒泡到 document，注册两遍会导致
+    // 每次按键执行两次（空格会立刻 暂停→继续）。
+    window.addEventListener('keydown', onKeyDown, { passive: false });
+
+    // 失焦自动暂停（切 Tab / 锁屏），回来不自动继续，防被偷回合
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && app.state === STATE.PLAYING) {
+        pauseGame();
+        showToast('已自动暂停', 1200);
+      }
+    });
+    window.addEventListener('blur', function () {
+      if (app.state === STATE.PLAYING) pauseGame();
+    });
+
+    // 尺寸变化：debounce 后重排
+    var rt = 0;
+    function relayout() {
+      clearTimeout(rt);
+      rt = setTimeout(function () {
+        layout();
+        renderer.resize();
+      }, 60);
+    }
+    window.addEventListener('resize', relayout);
+    window.addEventListener('orientationchange', function () {
+      setTimeout(function () { layout(); renderer.resize(); }, 220);
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', relayout);
+    }
+
+    // 触屏标记（控制按钮显隐）
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+      document.body.classList.add('touch');
+    }
+    // 阻止移动端长按选中/上下文菜单（棋盘与按钮）
+    document.addEventListener('contextmenu', function (e) {
+      var t = e.target;
+      if (t && (t.closest && (t.closest('.stage') || t.closest('.dpad')))) e.preventDefault();
+    });
+  }
+
+  /**
+   * 读取 URL hash，支持：
+   *   #auto            直接开局
+   *   #debug           暴露 window.Snake 调试接口
+   *   #noshadow / 任意未知参数忽略
+   * 调试/测试入口（不影响正常游玩）
+   */
+  function parseHash() {
+    var h = (location.hash || '').replace(/^#/, '').toLowerCase();
+    var parts = h.split(/[&,]/);
+    return {
+      auto: parts.indexOf('auto') >= 0,
+      debug: parts.indexOf('debug') >= 0,
+      // ?seek=1 效果：关闭贴边容错，做严格判定（公平性）；
+      // 默认开启：允许「贴边时迟到的转向」被提前一步执行。
+      strict: parts.indexOf('seek') >= 0
+    };
+  }
+
+  function boot() {
+    renderer.resize();
+    syncSoundIcon();
+    syncHud();
+    layout();
+    bindUI();
+    bindDpad();
+    bindGestures();
+    // 动画帧里定时调 resize（防漏：媒体查询切换、系统缩放）
+    setState(STATE.READY);
+    requestAnimationFrame(function (ts) {
+      app.lastTs = ts;
+      requestAnimationFrame(frame);
+    });
+
+    var opts = parseHash();
+    // 贴边容错开关：默认开启，#strict 关闭（gameTick 每步读取）
+    app.edgeAssist = !opts.strict;
+    if (opts.auto) {
+      startGame();
+      dom.overlayStart.classList.remove('show');
+    }
+
+    // 测试/调试钩子：window.Snake 只在 #debug 下暴露，正常游玩不污染全局
+    if (opts.debug) {
+      window.Snake = {
+        app: app, game: game, renderer: renderer,
+        start: startGame, pause: pauseGame, resume: resumeGame, restart: restart,
+        inputDir: inputDir, togglePause: togglePause,
+        /**
+         * 强制推进 N 步（同步执行，不走动画），返回最后一步事件。
+         * 走的是和主循环同一个 advance()，所以容错/死亡/计分逻辑与真机一致。
+         * 同时在 DOM 上「冻结」自动 tick，避免测试时 rAF 抢跑
+         * （MutationObserver 是乐观执行的，同步阻塞结束后马上恢复）。
+         */
+        tick: function (n) {
+          var ev = null;
+          dom.app.setAttribute('data-freeze', '1');
+          try {
+            for (var i = 0; i < (n || 1); i++) {
+              if (app.state !== STATE.PLAYING) break;
+              ev = advance(app.edgeAssist);
+            }
+          } finally {
+            dom.app.removeAttribute('data-freeze');
+          }
+          return ev;
+        },
+        /** 把食物挪到指定格子（用于验证吃食物） */
+        setFood: function (x, y) { game.food = { x: x, y: y }; game.foodT0 = nowMs(); },
+        /** 设置蛇的直接状态（测试用） */
+        setSnake: function (cells, dir) {
+          game.snake = cells.map(function (c) { return { x: c[0], y: c[1] }; });
+          game.prevSnake = game.snake.map(function (p) { return { x: p.x, y: p.y }; });
+          game.dir = dir || game.dir;
+          game.queue.length = 0;
+        },
+        spawnFood: function () { return game.spawnFood(); },
+        getState: function () {
+          return {
+            state: app.state, score: game.score, best: app.best,
+            len: game.snake.length, alive: game.alive, dir: game.dir,
+            queue: game.queue.slice(), food: game.food,
+            head: { x: game.snake[0].x, y: game.snake[0].y },
+            stage: { w: dom.stage.clientWidth, h: dom.stage.clientHeight },
+            canvas: { w: renderer.w, h: renderer.h, cell: renderer.cell }
+          };
+        },
+        COLS: COLS, ROWS: ROWS
+      };
+    }
+
+    // 首次渲染不一定在 RAF 前有 context 尺寸，强制画一帧兜底
+    renderer.resize();
+    renderer.draw(game, 1, nowMs(), app.state);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>
