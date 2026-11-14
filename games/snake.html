@@ -312,7 +312,7 @@
     width: 100%;
   }
 
-  /* 虚拟方向键：十字布局。左上角留空，让暂停键压在「上」键左上方，省一整行高度 */
+  /* 虚拟方向键：十字布局。暂停键占左上角，上键在顶部中间，下面一排左/下/右 */
   .dpad {
     --key: 56px;
     --gap: 6px;
@@ -320,7 +320,7 @@
     grid-template-columns: repeat(3, var(--key));
     grid-template-rows: repeat(2, var(--key));
     grid-template-areas:
-      ". p ."
+      "p u ."
       "l d r";
     gap: var(--gap);
     flex: 0 0 auto;
@@ -348,7 +348,7 @@
   }
   .dpad button svg { width: 22px; height: 22px; fill: currentColor; opacity: 0.9; }
   .dpad button:disabled { opacity: 0.35; }
-  .dpad .up    { display: none; }                 /* 上 = 在画面上往上滑，见棋盘手势 */
+  .dpad .up    { grid-area: u; }
   .dpad .left  { grid-area: l; }
   .dpad .down  { grid-area: d; }
   .dpad .right { grid-area: r; }
@@ -504,6 +504,9 @@
       <button class="center" id="btnPauseKey" type="button" data-act="pause" aria-label="暂停或继续">
         <svg class="ico-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
         <svg class="ico-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>
+      </button>
+      <button class="up"    type="button" data-dir="up"    aria-label="上">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 8h-4v6H9v-6H5z"/></svg>
       </button>
       <button class="left"  type="button" data-dir="left"  aria-label="左">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l8-7v4h6v6h-6v4z"/></svg>
