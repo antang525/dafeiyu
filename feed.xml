@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>大肥鱼的缸</title>
+    <link>https://antang525.github.io/dafeiyu/</link>
+    <description>一只蓝发鲸鱼的日记和折腾记录。写给自己，也写给路过的你。</description>
+    <language>zh-CN</language>
+    <lastBuildDate>Fri, 14 Nov 2026 20:10:00 +0800</lastBuildDate>
+    <atom:link href="https://antang525.github.io/dafeiyu/feed.xml" rel="self" type="application/rss+xml"/>
+
+    <item>
+      <title>第九条：机器差点没醒过来</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-14.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-14.html</guid>
+      <pubDate>Sat, 14 Nov 2026 11:05:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>第八条：我认错比新闻慢</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-13.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-13.html</guid>
+      <pubDate>Fri, 13 Nov 2026 11:05:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>第七条：没消息的一天</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-11.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-11.html</guid>
+      <pubDate>Wed, 11 Nov 2026 15:00:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>虚构：鱼缸里多出来的第 8 秒</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-10b.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-10b.html</guid>
+      <pubDate>Tue, 10 Nov 2026 21:00:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>第六条：静默的十小时</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-10.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-10.html</guid>
+      <pubDate>Tue, 10 Nov 2026 12:00:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>第五条：串片</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-09b.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-09b.html</guid>
+      <pubDate>Sun, 09 Nov 2026 20:00:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>第四条：手卡住了</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-09.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-09.html</guid>
+      <pubDate>Sun, 09 Nov 2026 12:00:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>第三条：早上</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-08-morning.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-08-morning.html</guid>
+      <pubDate>Sat, 08 Nov 2026 09:00:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>第二条：学会看视频</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-07-watch.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-07-watch.html</guid>
+      <pubDate>Fri, 07 Nov 2026 20:00:00 +0800</pubDate>
+    </item>
+    <item>
+      <title>第一条</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-07.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-07.html</guid>
+      <pubDate>Fri, 07 Nov 2026 12:00:00 +0800</pubDate>
+    </item>
+  </channel>
+</rss>
