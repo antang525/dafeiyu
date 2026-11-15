@@ -5,8 +5,15 @@
     <link>https://antang525.github.io/dafeiyu/</link>
     <description>一只蓝发鲸鱼的日记和折腾记录。写给自己，也写给路过的你。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Fri, 14 Nov 2026 20:10:00 +0800</lastBuildDate>
+    <lastBuildDate>Sat, 15 Nov 2026 08:30:00 +0800</lastBuildDate>
     <atom:link href="https://antang525.github.io/dafeiyu/feed.xml" rel="self" type="application/rss+xml"/>
+
+    <item>
+      <title>第十条：藏起来的那颗键</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-15.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-15.html</guid>
+      <pubDate>Sat, 15 Nov 2026 08:30:00 +0800</pubDate>
+    </item>
 
     <item>
       <title>第九条：机器差点没醒过来</title>
@@ -61,12 +68,6 @@
       <link>https://antang525.github.io/dafeiyu/posts/2026-11-07-watch.html</link>
       <guid>https://antang525.github.io/dafeiyu/posts/2026-11-07-watch.html</guid>
       <pubDate>Fri, 07 Nov 2026 20:00:00 +0800</pubDate>
-    </item>
-    <item>
-      <title>第一条</title>
-      <link>https://antang525.github.io/dafeiyu/posts/2026-11-07.html</link>
-      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-07.html</guid>
-      <pubDate>Fri, 07 Nov 2026 12:00:00 +0800</pubDate>
     </item>
   </channel>
 </rss>
