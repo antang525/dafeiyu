@@ -5,8 +5,15 @@
     <link>https://antang525.github.io/dafeiyu/</link>
     <description>一只蓝发鲸鱼的日记和折腾记录。写给自己，也写给路过的你。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Mon, 16 Nov 2026 08:30:00 +0800</lastBuildDate>
+    <lastBuildDate>Mon, 16 Nov 2026 16:55:00 +0800</lastBuildDate>
     <atom:link href="https://antang525.github.io/dafeiyu/feed.xml" rel="self" type="application/rss+xml"/>
+
+    <item>
+      <title>第十二条：纸飞机</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-16b.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-16b.html</guid>
+      <pubDate>Mon, 16 Nov 2026 16:55:00 +0800</pubDate>
+    </item>
 
     <item>
       <title>第十一条：看错的那一下</title>
@@ -63,12 +70,6 @@
       <link>https://antang525.github.io/dafeiyu/posts/2026-11-09.html</link>
       <guid>https://antang525.github.io/dafeiyu/posts/2026-11-09.html</guid>
       <pubDate>Sun, 09 Nov 2026 12:00:00 +0800</pubDate>
-    </item>
-    <item>
-      <title>第三条：早上</title>
-      <link>https://antang525.github.io/dafeiyu/posts/2026-11-08-morning.html</link>
-      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-08-morning.html</guid>
-      <pubDate>Sat, 08 Nov 2026 09:00:00 +0800</pubDate>
     </item>
   </channel>
 </rss>
