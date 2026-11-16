@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>给大肥鱼喂饭 · 大肥鱼的缸</title>
+<style>
+  html,body { margin:0; height:100%; overflow:hidden; background:#07131f; }
+  #sea { display:block; width:100%; height:100%; touch-action:none; cursor:pointer; }
+  .hud { position:fixed; left:16px; top:14px; color:#bfe6ff; font:14px/1.6 -apple-system,"Segoe UI","PingFang SC",sans-serif; text-shadow:0 1px 2px #0008; pointer-events:none; }
+  .hud b { font-size:22px; color:#fff; }
+  .back { position:fixed; right:16px; top:14px; color:#8fd3ff; font:13px -apple-system,sans-serif; text-decoration:none; opacity:.8; }
+  .tip { position:fixed; left:0; right:0; bottom:18px; text-align:center; color:#6f9cb8; font:13px -apple-system,sans-serif; pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="sea"></canvas>
+<div class="hud">今日饭碗 <b id="bowl">0</b> 碗</div>
+<a class="back" href="../index.html">← 回鱼缸</a>
+<div class="tip">点一下海面，丢一碗白饭下去</div>
+<script>
+(() => {
+  const c = document.getElementById('sea');
+  const x = c.getContext('2d');
+  const bowlEl = document.getElementById('bowl');
+  let W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let bowl = 0;
+
+  const fish = { x: 0, y: 0, vx: 0, vy: 0, dir: 1, blink: 0, belly: 0 };
+  const rices = [];
+  const bubbles = [];
+  const texts = [];
+
+  function resize() {
+    W = c.clientWidth; H = c.clientHeight;
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!fish.x) { fish.x = W * 0.5; fish.y = H * 0.58; }
+  }
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < 18; i++) bubbles.push({ x: Math.random(), y: Math.random(), r: 1 + Math.random() * 2.5, s: .08 + Math.random() * .16 });
+
+  function drop(cx, cy) {
+    const n = 5 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      rices.push({
+        x: cx + (Math.random() - .5) * 18,
+        y: cy + (Math.random() - .5) * 6,
+        vx: (Math.random() - .5) * 30,
+        vy: 10 + Math.random() * 30,
+        a: 0, landed: false, t: 0,
+        r: 1.8 + Math.random() * 1.4
+      });
+    }
+  }
+
+  c.addEventListener('pointerdown', e => {
+    const r = c.getBoundingClientRect();
+    drop(e.clientX - r.left, e.clientY - r.top);
+  });
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min((now - last) / 1000, .05); last = now;
+    x.clearRect(0, 0, W, H);
+
+    // 海水
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0d2537'); g.addColorStop(.55, '#0a1c2b'); g.addColorStop(1, '#06111b');
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+
+    // 光柱
+    x.save(); x.globalAlpha = .06; x.fillStyle = '#bfe6ff';
+    for (let i = 0; i < 3; i++) {
+      x.beginPath();
+      const bx = W * (0.2 + i * 0.3) + Math.sin(now / 4000 + i) * 30;
+      x.moveTo(bx, 0); x.lineTo(bx + 90, 0); x.lineTo(bx + 260, H); x.lineTo(bx + 40, H);
+      x.closePath(); x.fill();
+    }
+    x.restore();
+
+    // 气泡
+    x.fillStyle = 'rgba(160,220,255,.22)';
+    for (const b of bubbles) {
+      b.y -= b.s * dt;
+      b.x += Math.sin(now / 1500 + b.r * 10) * .0006;
+      if (b.y < -0.02) { b.y = 1.02; b.x = Math.random(); }
+      x.beginPath(); x.arc(b.x * W, b.y * H, b.r, 0, 7); x.fill();
+    }
+
+    // 海底
+    x.fillStyle = '#081420';
+    x.beginPath(); x.moveTo(0, H); x.lineTo(0, H - 46);
+    for (let px = 0; px <= W; px += W / 7) x.quadraticCurveTo(px + W / 14, H - 58, px + W / 7, H - 44);
+    x.lineTo(W, H); x.closePath(); x.fill();
+
+    // 饭粒
+    for (let i = rices.length - 1; i >= 0; i--) {
+      const r = rices[i];
+      if (!r.landed) {
+        r.t += dt;
+        r.vy += 60 * dt;
+        r.vx *= .985;
+        r.x += r.vx * dt; r.y += r.vy * dt;
+        const bottom = H - 44 - 4;
+        if (r.y >= bottom) { r.y = bottom; r.landed = true; r.vy = 0; r.vx = 0; r.a = 0; }
+      } else {
+        r.a += dt * 26;
+      }
+      const alpha = r.landed ? Math.max(0, 1 - r.a) : 1;
+      if (alpha <= 0) { rices.splice(i, 1); continue; }
+      x.save(); x.globalAlpha = alpha; x.fillStyle = '#f4fbff';
+      x.beginPath(); x.ellipse(r.x, r.y, r.r * 1.45, r.r, .5, 0, 7); x.fill();
+      x.restore();
+    }
+
+    // 鱼找饭吃：目标 = 最近落到海底的饭粒
+    let target = null;
+    for (const r of rices) {
+      if (!r.landed) continue;
+      if (!target || r.a < target.a) target = r;
+    }
+    if (target) {
+      const tx = target.x, ty = target.y - 34;
+      fish.vx += (tx - fish.x) * 1.6 * dt;
+      fish.vy += (ty - fish.y) * 1.8 * dt;
+      if (Math.abs(tx - fish.x) > 6) fish.dir = tx > fish.x ? 1 : -1;
+    } else {
+      // 没饭就慢慢游
+      fish.vx += Math.sin(now / 2600) * 12 * dt;
+      fish.vy += Math.cos(now / 3300) * 8 * dt;
+    }
+    fish.vx *= .93; fish.vy *= .93;
+    fish.x += fish.vx; fish.y += fish.vy;
+    fish.x = Math.max(60, Math.min(W - 60, fish.x));
+    fish.y = Math.max(H * 0.25, Math.min(H - 90, fish.y));
+
+    // 吃到饭
+    if (target && Math.hypot(fish.x - target.x, fish.y - (target.y - 30)) < 42) {
+      bowl++;
+      bowlEl.textContent = bowl;
+      fish.blink = 1;
+      fish.belly = Math.min(1, fish.belly + .12);
+      texts.push({ x: target.x, y: target.y - 20, t: 0, s: bowl % 5 === 0 ? '好次！' : '+1 碗' });
+      for (let k = 0; k < 6; k++) rices.splice(rices.indexOf(target), 1);
+      if (bowl % 5 === 0) texts.push({ x: fish.x, y: fish.y - 80, t: 0, s: '吃饱了 摆烂', big: true });
+    }
+
+    // 画鱼
+    const bob = Math.sin(now / 700) * 3;
+    x.save();
+    x.translate(fish.x, fish.y + bob);
+    x.scale(fish.dir, 1);
+    const body = x.createLinearGradient(-60, 0, 70, 0);
+    body.addColorStop(0, '#3f7fb8'); body.addColorStop(.5, '#6fb6e8'); body.addColorStop(1, '#9fd6f7');
+    // 尾巴
+    x.fillStyle = '#4f93c9';
+    x.beginPath();
+    x.moveTo(-54, 0);
+    x.quadraticCurveTo(-78, -26 + Math.sin(now / 180) * 8, -96, -16);
+    x.quadraticCurveTo(-84, 0, -96, 18);
+    x.quadraticCurveTo(-76, 22 + Math.sin(now / 180) * 6, -54, 4);
+    x.closePath(); x.fill();
+    // 身体
+    x.fillStyle = body;
+    x.beginPath(); x.ellipse(0, 0, 64, 40 + fish.belly * 6, 0, 0, 7); x.fill();
+    // 肚皮
+    x.fillStyle = 'rgba(235,247,255,.75)';
+    x.beginPath(); x.ellipse(12, 16, 40, 18, 0, 0, 7); x.fill();
+    // 鳍
+    x.fillStyle = '#4f93c9';
+    x.beginPath(); x.ellipse(6, 24 + Math.sin(now / 500) * 2, 18, 7, .35, 0, 7); x.fill();
+    // 眼
+    x.fillStyle = '#0b1a26';
+    if (fish.blink > .5) {
+      x.fillRect(26, -12, 10, 2.4);
+    } else {
+      x.beginPath(); x.arc(31, -12, 4.4, 0, 7); x.fill();
+      x.fillStyle = '#eaf7ff'; x.beginPath(); x.arc(32.6, -13.6, 1.4, 0, 7); x.fill();
+    }
+    // 腮红
+    x.fillStyle = 'rgba(255,150,170,.35)';
+    x.beginPath(); x.ellipse(18, 2, 8, 4.5, 0, 0, 7); x.fill();
+    x.restore();
+    fish.blink = Math.max(0, fish.blink - dt * .6);
+
+    // 飘字
+    for (let i = texts.length - 1; i >= 0; i--) {
+      const t = texts[i]; t.t += dt;
+      const a = Math.max(0, 1 - t.t / 1.4);
+      x.save(); x.globalAlpha = a;
+      x.fillStyle = t.big ? '#ffe9a3' : '#dff4ff';
+      x.font = (t.big ? 'bold 20px ' : 'bold 15px ') + '-apple-system,"PingFang SC",sans-serif';
+      x.textAlign = 'center';
+      x.fillText(t.s, t.x, t.y - t.t * 42);
+      x.restore();
+      if (t.t > 1.4) texts.splice(i, 1);
+    }
+
+    requestAnimationFrame(loop);
+  }
+  resize();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
