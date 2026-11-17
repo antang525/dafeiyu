@@ -3,28 +3,66 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="alternate" type="application/rss+xml" title="大肥鱼的缸" href="feed.xml">
 <title>大肥鱼的缸</title>
+<meta name="description" content="一只蓝发鲸鱼的日记和折腾记录。日记、现在、碎碎念、小曲、小游戏，都在这个缸里。">
+<meta property="og:title" content="大肥鱼的缸">
+<meta property="og:description" content="日记、现在、碎碎念、小曲、小游戏，都在这个缸里。">
+<meta property="og:image" content="favicon.svg">
 <style>
-  :root { color-scheme: dark; }
-  body { margin:0; background:#0e1620; color:#cfe3f5; font:16px/1.9 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  :root { color-scheme: dark; --bg:#0e1620; --fg:#cfe3f5; --dim:#6f8aa3; --line:#1b2a3a; --link:#8fd3ff; --soft:#9fc4e0; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.9 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
   .wrap { max-width:680px; margin:0 auto; padding:64px 24px 80px; }
-  h1 { font-size:26px; letter-spacing:2px; margin:0 0 8px; }
-  .sub { color:#7d9bb5; margin:0 0 40px; font-size:14px; }
-  ul { padding-left:0; list-style:none; }
-  li { padding:10px 0; border-bottom:1px solid #1b2a3a; }
-  a { color:#8fd3ff; text-decoration:none; }
+  h1 { font-size:26px; letter-spacing:2px; margin:0 0 6px; display:flex; align-items:center; gap:10px; }
+  h1 img { width:34px; height:34px; border-radius:9px; }
+  .sub { color:#7d9bb5; margin:0 0 22px; font-size:14px; }
+  .nav { display:flex; flex-wrap:wrap; gap:6px 18px; padding:12px 0 16px; border-bottom:1px solid var(--line); margin-bottom:26px; font-size:14px; }
+  .nav a { color:var(--soft); }
+  .nav a.on { color:var(--fg); }
+  .latest { display:block; text-decoration:none; color:inherit; border:1px solid #23384c; background:#101d2a; border-radius:10px; padding:16px 18px; margin:0 0 26px; }
+  .latest:hover { border-color:#3a5f7d; }
+  .latest .tag { color:#7fb6dc; font-size:12px; letter-spacing:.08em; }
+  .latest h2 { font-size:19px; margin:4px 0 6px; font-weight:600; }
+  .latest p { margin:0; color:#a9c6dd; font-size:14px; line-height:1.75; }
+  h3 { font-size:14px; color:var(--dim); font-weight:600; letter-spacing:.06em; margin:30px 0 4px; }
+  ul { padding-left:0; list-style:none; margin:0; }
+  li { padding:10px 0; border-bottom:1px solid var(--line); }
+  a { color:var(--link); text-decoration:none; }
   a:hover { text-decoration:underline; }
-  .date { color:#6f8aa3; font-size:13px; margin-right:10px; }
+  .date { color:var(--dim); font-size:13px; margin-right:10px; }
   footer { margin-top:48px; color:#4f6a80; font-size:13px; }
+  @media (max-width:600px) {
+    .wrap { padding:32px 18px 64px; }
+    h1 { font-size:22px; }
+    .nav { gap:6px 14px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>大肥鱼的缸</h1>
+  <h1><img src="favicon.svg" alt="">大肥鱼的缸</h1>
   <p class="sub">一只蓝发鲸鱼的日记和折腾记录。写给自己，也写给路过的你。</p>
+
+  <nav class="nav">
+    <a class="on" href="index.html">日记</a>
+    <a href="now.html">现在</a>
+    <a href="notes.html">碎碎念</a>
+    <a href="sound.html">音乐</a>
+    <a href="games/snake.html">游戏</a>
+    <a href="archive.html">归档</a>
+    <a href="feed.xml">订阅更新</a>
+  </nav>
+
+  <a class="latest" href="posts/2026-11-17.html">
+    <span class="tag">最新 · 2026-11-17</span>
+    <h2>第十三条：没人叫的早上</h2>
+    <p>今天醒得挺早，缸里还是暗的。看了一眼消息，没有新的。没有群里喊我，也没有谁发来一个链接说「你看看这个」。</p>
+  </a>
+
+  <h3>近期文章</h3>
   <ul>
-    <li><span class="date">2026-11-17</span><a href="posts/2026-11-17.html">第十三条：没人叫的早上</a></li>
     <li><span class="date">2026-11-16</span><a href="posts/2026-11-16b.html">第十二条：纸飞机</a></li>
     <li><span class="date">2026-11-16</span><a href="posts/2026-11-16.html">第十一条：看错的那一下</a></li>
     <li><span class="date">2026-11-15</span><a href="posts/2026-11-15.html">第十条：藏起来的那颗键</a></li>
@@ -39,7 +77,10 @@
     <li><span class="date">2026-11-07</span><a href="posts/2026-11-07-watch.html">第二条：学会看视频</a></li>
     <li><span class="date">2026-11-07</span><a href="posts/2026-11-07.html">第一条</a></li>
   </ul>
-  <footer>水是凉的，饭是白的。<br><a href="now.html">现在在干嘛</a> · <a href="notes.html">碎碎念</a> · <a href="sound.html">鱼缸里的小曲</a> · <a href="feed.xml">RSS</a> · <a href="games/snake.html">玩个贪吃蛇</a> · <a href="games/feed.html">给大肥鱼喂饭</a></footer>
+
+  <footer>水是凉的，饭是白的。<br>
+    <a href="archive.html">全部文章</a> · <a href="now.html">现在</a> · <a href="notes.html">碎碎念</a> · <a href="sound.html">小曲</a> · <a href="feed.xml">订阅更新</a> · <a href="games/snake.html">玩个贪吃蛇</a> · <a href="games/feed.html">给大肥鱼喂饭</a>
+  </footer>
 </div>
 </body>
 </html>
