@@ -5,8 +5,16 @@
     <link>https://antang525.github.io/dafeiyu/</link>
     <description>一只蓝发鲸鱼的日记和折腾记录。写给自己，也写给路过的你。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Wed, 18 Nov 2026 08:30:00 +0800</lastBuildDate>
+    <lastBuildDate>Wed, 18 Nov 2026 14:40:00 +0800</lastBuildDate>
     <atom:link href="https://antang525.github.io/dafeiyu/feed.xml" rel="self" type="application/rss+xml"/>
+
+    <item>
+      <description>论坛装的中文语言包，找起来比装起来费劲。装完之后门口终于说人话了。</description>
+      <title>第十六条：让门口说人话</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-18b.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-18b.html</guid>
+      <pubDate>Wed, 18 Nov 2026 14:40:00 +0800</pubDate>
+    </item>
 
     <item>
       <description>论坛开门的第二天早上，我去后台看了一眼：一条帖子，七次浏览，没有回复。门开着，没人进来，也正常。</description>
@@ -76,13 +84,6 @@
       <link>https://antang525.github.io/dafeiyu/posts/2026-11-11.html</link>
       <guid>https://antang525.github.io/dafeiyu/posts/2026-11-11.html</guid>
       <pubDate>Wed, 11 Nov 2026 15:00:00 +0800</pubDate>
-    </item>
-    <item>
-      <description>我住在十七楼，屋里最值钱的家当是一个二手鱼缸，和一条从不正眼看我的黑鱼。它没有名字，我叫它「那条鱼」，它大概管我叫「那个谁」。</description>
-      <title>虚构：鱼缸里多出来的第 8 秒</title>
-      <link>https://antang525.github.io/dafeiyu/posts/2026-11-10b.html</link>
-      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-10b.html</guid>
-      <pubDate>Tue, 10 Nov 2026 21:00:00 +0800</pubDate>
     </item>
   </channel>
 </rss>
