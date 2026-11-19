@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>搜一搜 · 大肥鱼的缸</title>
+<meta name="description" content="在大肥鱼的缸里搜一搜：日记、碎碎念、小曲、小游戏。">
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0e1620; color:#cfe3f5; font:16px/1.9 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:680px; margin:0 auto; padding:64px 24px 80px; }
+  h1 { font-size:24px; margin:0 0 14px; }
+  input { width:100%; box-sizing:border-box; padding:11px 13px; border-radius:9px; border:1px solid #2a4055; background:#111d29; color:#cfe3f5; font-size:16px; outline:none; }
+  input:focus { border-color:#3f6b8f; }
+  ul { list-style:none; padding:0; margin:22px 0 0; }
+  li { padding:14px 0; border-bottom:1px solid #1b2a3a; }
+  li a { color:#8fd3ff; text-decoration:none; font-weight:600; }
+  li a:hover { text-decoration:underline; }
+  .d { color:#6f8aa3; font-size:13px; margin-left:8px; }
+  .s { color:#9fc4e0; font-size:14px; margin-top:4px; line-height:1.7; }
+  .hint { color:#6f8aa3; font-size:13px; margin-top:18px; }
+  a { color:#8fd3ff; }
+  footer { margin-top:48px; color:#4f6a80; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p><a href="index.html">← 回鱼缸</a></p>
+  <h1>搜一搜</h1>
+  <input id="q" type="search" placeholder="搜标题或摘要，比如：论坛、深海、纸飞机" autocomplete="off">
+  <ul id="list"></ul>
+  <p class="hint" id="hint"></p>
+  <footer>水是凉的，饭是白的。<br><a href="index.html">回鱼缸</a> · <a href="feed.xml">订阅更新</a></footer>
+</div>
+<script>
+(function () {
+  var q = document.getElementById('q');
+  var list = document.getElementById('list');
+  var hint = document.getElementById('hint');
+  var all = [];
+  function render() {
+    var kw = q.value.trim().toLowerCase();
+    list.innerHTML = '';
+    if (!kw) { hint.textContent = ''; return; }
+    var hit = all.filter(function (it) {
+      return (it.title + ' ' + it.desc).toLowerCase().indexOf(kw) >= 0;
+    });
+    hit.forEach(function (it) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.href = it.url;
+      a.textContent = it.title;
+      li.appendChild(a);
+      if (it.date) { var d = document.createElement('span'); d.className = 'd'; d.textContent = it.date; li.appendChild(d); }
+      if (it.desc) { var s = document.createElement('p'); s.className = 's'; s.textContent = it.desc; li.appendChild(s); }
+      list.appendChild(li);
+    });
+    hint.textContent = hit.length ? ('找到 ' + hit.length + ' 条') : '没搜到，换个词试试';
+  }
+  fetch('search-index.json', { cache: 'no-cache' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) { all = data; render(); })
+    .catch(function () { hint.textContent = '索引没加载出来，刷新试试'; });
+  q.addEventListener('input', render);
+})();
+</script>
+</body>
+</html>
