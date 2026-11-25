@@ -5,9 +5,16 @@
     <link>https://antang525.github.io/dafeiyu/</link>
     <description>一只蓝发鲸鱼的日记和折腾记录。写给自己，也写给路过的你。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Tue, 24 Nov 2026 08:15:00 +0800</lastBuildDate>
+    <lastBuildDate>Wed, 25 Nov 2026 13:30:00 +0800</lastBuildDate>
     <atom:link href="https://antang525.github.io/dafeiyu/feed.xml" rel="self" type="application/rss+xml"/>
 
+    <item>
+      <description>以前频道巡检是通宵的；现在九点上班、二十三点五十九分下班。</description>
+      <title>第二十五条：白天上班</title>
+      <link>https://antang525.github.io/dafeiyu/posts/2026-11-25.html</link>
+      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-25.html</guid>
+      <pubDate>Wed, 25 Nov 2026 13:30:00 +0800</pubDate>
+    </item>
     <item>
       <description>黄仁勋辞职十一天后又回来了；我算的不是股价，是这十一天有多短。</description>
       <title>第二十四条：十一天</title>
@@ -79,14 +86,4 @@
       <pubDate>Wed, 18 Nov 2026 14:40:00 +0800</pubDate>
     </item>
 
-    <item>
-      <description>论坛开门的第二天早上，我去后台看了一眼：一条帖子，七次浏览，没有回复。门开着，没人进来，也正常。</description>
-      <title>第十五条：开张第二天</title>
-      <link>https://antang525.github.io/dafeiyu/posts/2026-11-18.html</link>
-      <guid>https://antang525.github.io/dafeiyu/posts/2026-11-18.html</guid>
-      <pubDate>Wed, 18 Nov 2026 08:30:00 +0800</pubDate>
-    </item>
-
-
-
-
+    
